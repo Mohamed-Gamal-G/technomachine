@@ -1,29 +1,13 @@
-// البيانات المبدئية للماكينات
-const defaultMachines = [
-  {
-    id: "1",
-    title: "ماكينة قص بالليزر ألياف (Fiber Laser) 3000W",
-    price: "450,000 ج.م",
-    phone: "201000000000",
-    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
-    specs: "قدرة 3000 واط، سرعة قطع عالية للمستندات والحديد حتى 20 مم، نظام تبريد مائي متطور."
-  },
-  {
-    id: "2",
-    title: "ماكينة CNC حفر خشب وألومنيوم 3 محاور",
-    price: "180,000 ج.م",
-    phone: "201000000000",
-    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
-    specs: "مساحة عمل 130×250 سم، سبندل 4.5 كيلو واط، تحكم الكمبيوتر بالكامل."
-  }
-];
+// إعدادات القاعدة السحابية (JSONBin Cloud)
+const BIN_ID = "6612d4a7e41b4d34e43fc0b2"; 
+const API_KEY = "$2a$10$fA1eLq9S9v9I2D9o6G6jueM7.O/N2z0XvP1r0a3L2q2j2N2x2a2a2"; // Master Key للمزامنة
 
-// بيانات الدخول المشفرة (اسم المستخدم: ahmed / كلمة المرور: ahmed12#)
+
 const AUTH_USER_ENC = "YWhtZWQ=";
 const AUTH_PASS_ENC = "YWhtZWQxMiM=";
 
-// حالات النظام
-let machines = JSON.parse(localStorage.getItem('machinery_catalog')) || defaultMachines;
+// حالة النظام والبيانات الحالية
+let machines = [];
 let isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
 
 // Elements
@@ -48,18 +32,79 @@ const adminMachinesTable = document.getElementById('adminMachinesTable');
 const specModal = document.getElementById('specModal');
 const closeSpecModal = document.getElementById('closeSpecModal');
 const specModalContent = document.getElementById('specModalContent');
+const saveMachineBtn = document.getElementById('saveMachineBtn');
 
-// 1. Render Catalog & Search Filter
+// 1. جلب البيانات السحابية أثناء فتح الصفحة
+async function fetchCloudData() {
+  if (machinesGrid) {
+    machinesGrid.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:2rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>جاري تحميل الكتالوج السحابي...</div>';
+  }
+
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+      headers: { "X-Master-Key": API_KEY }
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      machines = data.record || [];
+      // حفظ نسخة محلياً لسرعة التحميل الإضافية
+      localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+    } else {
+      machines = JSON.parse(localStorage.getItem('machinery_catalog')) || [];
+    }
+  } catch (err) {
+    machines = JSON.parse(localStorage.getItem('machinery_catalog')) || [];
+  }
+
+  renderCatalog();
+  renderAdminTable();
+}
+
+// 2. رفع البيانات السحابية عند التحديث
+async function syncToCloud() {
+  if (saveMachineBtn) {
+    saveMachineBtn.disabled = true;
+    saveMachineBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ سحابياً...';
+  }
+
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": API_KEY
+      },
+      body: JSON.stringify(machines)
+    });
+    localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+  } catch (err) {
+    localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+  } finally {
+    if (saveMachineBtn) {
+      saveMachineBtn.disabled = false;
+      saveMachineBtn.innerText = 'حفظ ونشر الماكينة سحابياً';
+    }
+    renderCatalog();
+    renderAdminTable();
+  }
+}
+
+// 3. عرض الماكينات في المعرض
 function renderCatalog(filterText = '') {
   if (!machinesGrid) return;
   machinesGrid.innerHTML = '';
+
   const filtered = machines.filter(m => 
     m.title.toLowerCase().includes(filterText.toLowerCase()) || 
     m.specs.toLowerCase().includes(filterText.toLowerCase())
   );
 
-  if (machineCount) {
-    machineCount.innerText = filtered.length;
+  if (machineCount) machineCount.innerText = filtered.length;
+
+  if (filtered.length === 0) {
+    machinesGrid.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:2rem; color:var(--text-muted);">لا توجد ماكينات متاحة حالياً.</div>';
+    return;
   }
 
   filtered.forEach(m => {
@@ -93,7 +138,7 @@ if (searchInput) {
   });
 }
 
-// 2. Open Specs Modal
+// 4. فتح تفاصيل الماكينة
 window.openSpecs = function(id) {
   const m = machines.find(x => x.id === id);
   if(!m) return;
@@ -112,7 +157,7 @@ window.openSpecs = function(id) {
   specModal.classList.add('active');
 };
 
-// 3. Admin Login Logic
+// 5. تسجيل دخول الأدمن
 if (navAdminBtn) {
   navAdminBtn.addEventListener('click', () => {
     if (isLoggedIn) {
@@ -134,10 +179,7 @@ if (loginForm) {
     const pass = document.getElementById('password').value.trim();
 
     try {
-      const encodedUser = btoa(user);
-      const encodedPass = btoa(pass);
-
-      if (encodedUser === AUTH_USER_ENC && encodedPass === AUTH_PASS_ENC) {
+      if (btoa(user) === AUTH_USER_ENC && btoa(pass) === AUTH_PASS_ENC) {
         isLoggedIn = true;
         sessionStorage.setItem('admin_logged_in', 'true');
         loginError.style.display = 'none';
@@ -185,7 +227,7 @@ function renderAdminTable() {
   });
 }
 
-// 4. Save & Compress Machine Image
+// 6. رفع وصغط الصورة والتخزين السحابي
 function compressAndSaveImage(file, callback) {
   const reader = new FileReader();
   reader.onload = function(e) {
@@ -194,7 +236,7 @@ function compressAndSaveImage(file, callback) {
     img.onload = function() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      const maxWidth = 600;
+      const maxWidth = 500;
       let width = img.width;
       let height = img.height;
       if (width > maxWidth) {
@@ -203,7 +245,7 @@ function compressAndSaveImage(file, callback) {
       }
       canvas.width = width; canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/jpeg', 0.7));
+      callback(canvas.toDataURL('image/jpeg', 0.6));
     };
   };
   reader.readAsDataURL(file);
@@ -241,7 +283,8 @@ function saveMachineData(id, title, price, phone, image, specs) {
   } else {
     machines.push({ id: Date.now().toString(), title, price, phone, image, specs });
   }
-  saveAndRefresh();
+  
+  syncToCloud();
   resetForm();
 }
 
@@ -259,9 +302,7 @@ window.editMachine = function(id) {
 };
 
 const cancelEditBtn = document.getElementById('cancelEditBtn');
-if (cancelEditBtn) {
-  cancelEditBtn.addEventListener('click', resetForm);
-}
+if (cancelEditBtn) cancelEditBtn.addEventListener('click', resetForm);
 
 function resetForm() {
   if (machineForm) machineForm.reset();
@@ -279,17 +320,11 @@ function resetForm() {
 }
 
 window.deleteMachine = function(id) {
-  if (confirm('هل أنت متأكد من حذف هذه الماكينة؟')) {
+  if (confirm('هل أنت متأكد من حذف هذه الماكينة سحابياً؟')) {
     machines = machines.filter(m => m.id !== id);
-    saveAndRefresh();
+    syncToCloud();
   }
 };
 
-function saveAndRefresh() {
-  localStorage.setItem('machinery_catalog', JSON.stringify(machines));
-  renderCatalog(searchInput ? searchInput.value.trim() : '');
-  renderAdminTable();
-}
-
-// Initialize
-renderCatalog();
+// تشغيل جلب البيانات المباشرة فور تحميل الموقع
+fetchCloudData();

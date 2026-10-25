@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تكنوماشين - كتالوج الماكينات والمعدات الصناعية</title>
-  <!-- Google Fonts: Cairo & Tajawal -->
+  <!-- Google Fonts: Cairo -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -35,6 +35,7 @@
       </nav>
     </div>
   </header>
+
   <div class="container">
     <!-- Hero Banner Card -->
     <section class="hero-card">
@@ -46,6 +47,7 @@
         استعرض مواصفات وأسعار الماكينات والمعدات، وتواصل مع فريق المبيعات مباشرة عبر الواتساب للطلب والاستفسار.
       </p>
     </section>
+
     <!-- Search and Status Bar -->
     <div class="search-bar-container">
       <div class="status-count">
@@ -56,13 +58,15 @@
         <i class="fa-solid fa-magnifying-glass search-icon"></i>
       </div>
     </div>
+
     <!-- Main Catalog Grid -->
     <main class="catalog-section" id="catalog">
       <div class="machines-grid" id="machinesGrid">
-        <!-- يتم تحميل الماكينات ديناميكياً -->
+        <!-- يتم تحميل الماكينات سحابياً -->
       </div>
     </main>
   </div>
+
   <!-- Footer -->
   <footer class="main-footer">
     <div class="container footer-content">
@@ -74,6 +78,7 @@
       </div>
     </div>
   </footer>
+
   <!-- Admin Login Modal -->
   <div class="modal" id="loginModal">
     <div class="modal-content login-box">
@@ -97,6 +102,7 @@
       </form>
     </div>
   </div>
+
   <!-- Admin Dashboard Modal -->
   <div class="modal" id="adminModal">
     <div class="modal-content admin-dashboard">
@@ -105,6 +111,7 @@
         <h3><i class="fa-solid fa-sliders"></i> لوحة التحكم في الماكينات</h3>
         <button class="btn btn-danger btn-sm" id="logoutBtn" type="button"><i class="fa-solid fa-right-from-bracket"></i> خروج</button>
       </div>
+
       <!-- Add / Edit Machine Form -->
       <form id="machineForm" class="machine-form" onsubmit="return false;">
         <h4 id="formTitle">إضافة ماكينة جديدة</h4>
@@ -140,13 +147,14 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-success" id="saveMachineBtn">حفظ الماكينة</button>
+          <button type="submit" class="btn btn-success" id="saveMachineBtn">حفظ ونشر الماكينة سحابياً</button>
           <button type="button" class="btn btn-secondary" id="cancelEditBtn" style="display: none;">إلغاء التعديل</button>
         </div>
       </form>
+
       <!-- Machine List Management -->
       <div class="manage-machines">
-        <h4>الماكينات الحالية بالكتالوج</h4>
+        <h4>الماكينات الحالية بالكتالوج (السحابي)</h4>
         <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
@@ -159,7 +167,7 @@
               </tr>
             </thead>
             <tbody id="adminMachinesTable">
-              <!-- يتم ملؤها بـ JavaScript -->
+              <!-- يتم ملؤها ديناميكياً -->
             </tbody>
           </table>
         </div>
