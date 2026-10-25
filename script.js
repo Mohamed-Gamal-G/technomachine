@@ -18,10 +18,6 @@ const defaultMachines = [
   }
 ];
 
-
-const AUTH_USER_HASH = "627c2937be1e9e34e9e42e478544c0175d7b5790d9c4939b4b0a1d63604f8f4a";
-const AUTH_PASS_HASH = "bf29b3c5825d107a6f2382103e33b666a7b1b017b2b0051e944733e8b0ed6993";
-
 // حالات النظام
 let machines = JSON.parse(localStorage.getItem('machinery_catalog')) || defaultMachines;
 let isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
@@ -48,14 +44,6 @@ const adminMachinesTable = document.getElementById('adminMachinesTable');
 const specModal = document.getElementById('specModal');
 const closeSpecModal = document.getElementById('closeSpecModal');
 const specModalContent = document.getElementById('specModalContent');
-
-// دالة تشفير النصوص باستخدام Web Crypto API المدمجة في المتصفح
-async function hashSHA256(str) {
-  const buffer = new TextEncoder().encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 // 1. Render Catalog & Search Filter
 function renderCatalog(filterText = '') {
@@ -128,16 +116,12 @@ closeLoginModal.addEventListener('click', () => loginModal.classList.remove('act
 closeAdminModal.addEventListener('click', () => adminModal.classList.remove('active'));
 closeSpecModal.addEventListener('click', () => specModal.classList.remove('active'));
 
-loginForm.addEventListener('submit', async (e) => {
+loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
 
-  // تشفير المدخلات لمقارنتها بالتشفير المحفوظ
-  const userHash = await hashSHA256(user);
-  const passHash = await hashSHA256(pass);
-
-  if (userHash === AUTH_USER_HASH && passHash === AUTH_PASS_HASH) {
+  if (user === 'ahmed' && pass === 'ahmed12#') {
     isLoggedIn = true;
     sessionStorage.setItem('admin_logged_in', 'true');
     loginError.style.display = 'none';
