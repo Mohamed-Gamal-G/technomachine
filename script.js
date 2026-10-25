@@ -1,13 +1,31 @@
-// إعدادات القاعدة السحابية (JSONBin Cloud)
-const BIN_ID = "6612d4a7e41b4d34e43fc0b2"; 
-const API_KEY = "$2a$10$fA1eLq9S9v9I2D9o6G6jueM7.O/N2z0XvP1r0a3L2q2j2N2x2a2a2"; // Master Key للمزامنة
-
+// نقطة اتصال سحابية مخصصة ومزامنة حية لكل الأجهزة
+const DB_ENDPOINT = "https://api.myjsononline.com/v1/records/481bd2e0-2521-4f18-a62d-05d52e5a43ff";
 
 const AUTH_USER_ENC = "YWhtZWQ=";
 const AUTH_PASS_ENC = "YWhtZWQxMiM=";
 
+// البيانات المبدئية عند عدم الاتصال السحابي
+const defaultMachines = [
+  {
+    id: "1",
+    title: "ماكينة قص بالليزر ألياف (Fiber Laser) 3000W",
+    price: "450,000 ج.م",
+    phone: "201000000000",
+    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+    specs: "قدرة 3000 واط، سرعة قطع عالية للمستندات والحديد حتى 20 مم، نظام تبريد مائي متطور."
+  },
+  {
+    id: "2",
+    title: "ماكينة CNC حفر خشب وألومنيوم 3 محاور",
+    price: "180,000 ج.م",
+    phone: "201000000000",
+    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
+    specs: "مساحة عمل 130×250 سم، سبندل 4.5 كيلو واط، تحكم الكمبيوتر بالكامل."
+  }
+];
+
 // حالة النظام والبيانات الحالية
-let machines = [];
+let machines = JSON.parse(localStorage.getItem('machinery_catalog')) || defaultMachines;
 let isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
 
 // Elements
@@ -34,58 +52,54 @@ const closeSpecModal = document.getElementById('closeSpecModal');
 const specModalContent = document.getElementById('specModalContent');
 const saveMachineBtn = document.getElementById('saveMachineBtn');
 
-// 1. جلب البيانات السحابية أثناء فتح الصفحة
+// 1. جلب البيانات السحابية عند الفتح من أي جهاز
 async function fetchCloudData() {
-  if (machinesGrid) {
-    machinesGrid.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:2rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>جاري تحميل الكتالوج السحابي...</div>';
+  if (machinesGrid && machines.length === 0) {
+    machinesGrid.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:2rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>جاري مزامنة الكتالوج السحابي...</div>';
   }
 
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-      headers: { "X-Master-Key": API_KEY }
-    });
-    
+    const res = await fetch(DB_ENDPOINT);
     if (res.ok) {
       const data = await res.json();
-      machines = data.record || [];
-      // حفظ نسخة محلياً لسرعة التحميل الإضافية
+      if (data && data.jsonData && Array.isArray(data.jsonData)) {
+        machines = data.jsonData;
+      } else if (Array.isArray(data)) {
+        machines = data;
+      }
       localStorage.setItem('machinery_catalog', JSON.stringify(machines));
-    } else {
-      machines = JSON.parse(localStorage.getItem('machinery_catalog')) || [];
     }
   } catch (err) {
-    machines = JSON.parse(localStorage.getItem('machinery_catalog')) || [];
+    console.warn("استخدام النسخة المحلية المؤقتة:", err);
   }
 
-  renderCatalog();
+  renderCatalog(searchInput ? searchInput.value.trim() : '');
   renderAdminTable();
 }
 
-// 2. رفع البيانات السحابية عند التحديث
+// 2. تحديث وحفظ البيانات سحابياً لتسمع فوراً على باقي الأجهزة
 async function syncToCloud() {
   if (saveMachineBtn) {
     saveMachineBtn.disabled = true;
-    saveMachineBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ سحابياً...';
+    saveMachineBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ والنشر سحابياً...';
   }
 
+  localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+
   try {
-    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    await fetch(DB_ENDPOINT, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": API_KEY
-      },
-      body: JSON.stringify(machines)
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonData: machines })
     });
-    localStorage.setItem('machinery_catalog', JSON.stringify(machines));
   } catch (err) {
-    localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+    console.error("خطأ في المزامنة السحابية:", err);
   } finally {
     if (saveMachineBtn) {
       saveMachineBtn.disabled = false;
       saveMachineBtn.innerText = 'حفظ ونشر الماكينة سحابياً';
     }
-    renderCatalog();
+    renderCatalog(searchInput ? searchInput.value.trim() : '');
     renderAdminTable();
   }
 }
@@ -227,7 +241,7 @@ function renderAdminTable() {
   });
 }
 
-// 6. رفع وصغط الصورة والتخزين السحابي
+// 6. ضغط الصور ورفعها
 function compressAndSaveImage(file, callback) {
   const reader = new FileReader();
   reader.onload = function(e) {
@@ -326,5 +340,6 @@ window.deleteMachine = function(id) {
   }
 };
 
-// تشغيل جلب البيانات المباشرة فور تحميل الموقع
+// تشغيل جلب البيانات المباشرة فور تحميل الموقع وإعادة التحديث تلقائياً
 fetchCloudData();
+setInterval(fetchCloudData, 10000); // تحديث دوري كل 10 ثوانٍ لسحب البيانات الجديدة للأجهزة الأخرى
