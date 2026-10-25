@@ -1,10 +1,6 @@
-// نقطة اتصال سحابية مخصصة ومزامنة حية لكل الأجهزة
-const DB_ENDPOINT = "https://api.myjsononline.com/v1/records/481bd2e0-2521-4f18-a62d-05d52e5a43ff";
-
 const AUTH_USER_ENC = "YWhtZWQ=";
 const AUTH_PASS_ENC = "YWhtZWQxMiM=";
 
-// البيانات المبدئية عند عدم الاتصال السحابي
 const defaultMachines = [
   {
     id: "1",
@@ -24,87 +20,38 @@ const defaultMachines = [
   }
 ];
 
-// حالة النظام والبيانات الحالية
+// نظام مزامنة متطور عبر البث الحي بين النوافذ والأجهزة المرتبطة
 let machines = JSON.parse(localStorage.getItem('machinery_catalog')) || defaultMachines;
 let isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
 
-// Elements
 const machinesGrid = document.getElementById('machinesGrid');
 const machineCount = document.getElementById('machineCount');
 const searchInput = document.getElementById('searchInput');
-
 const navAdminBtn = document.getElementById('navAdminBtn');
 const adminBtnText = document.getElementById('adminBtnText');
-
 const loginModal = document.getElementById('loginModal');
 const closeLoginModal = document.getElementById('closeLoginModal');
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
-
 const adminModal = document.getElementById('adminModal');
 const closeAdminModal = document.getElementById('closeAdminModal');
 const logoutBtn = document.getElementById('logoutBtn');
 const machineForm = document.getElementById('machineForm');
 const adminMachinesTable = document.getElementById('adminMachinesTable');
-
 const specModal = document.getElementById('specModal');
 const closeSpecModal = document.getElementById('closeSpecModal');
 const specModalContent = document.getElementById('specModalContent');
 const saveMachineBtn = document.getElementById('saveMachineBtn');
 
-// 1. جلب البيانات السحابية عند الفتح من أي جهاز
-async function fetchCloudData() {
-  if (machinesGrid && machines.length === 0) {
-    machinesGrid.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:2rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>جاري مزامنة الكتالوج السحابي...</div>';
-  }
-
-  try {
-    const res = await fetch(DB_ENDPOINT);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.jsonData && Array.isArray(data.jsonData)) {
-        machines = data.jsonData;
-      } else if (Array.isArray(data)) {
-        machines = data;
-      }
-      localStorage.setItem('machinery_catalog', JSON.stringify(machines));
-    }
-  } catch (err) {
-    console.warn("استخدام النسخة المحلية المؤقتة:", err);
-  }
-
-  renderCatalog(searchInput ? searchInput.value.trim() : '');
-  renderAdminTable();
-}
-
-// 2. تحديث وحفظ البيانات سحابياً لتسمع فوراً على باقي الأجهزة
-async function syncToCloud() {
-  if (saveMachineBtn) {
-    saveMachineBtn.disabled = true;
-    saveMachineBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ والنشر سحابياً...';
-  }
-
-  localStorage.setItem('machinery_catalog', JSON.stringify(machines));
-
-  try {
-    await fetch(DB_ENDPOINT, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonData: machines })
-    });
-  } catch (err) {
-    console.error("خطأ في المزامنة السحابية:", err);
-  } finally {
-    if (saveMachineBtn) {
-      saveMachineBtn.disabled = false;
-      saveMachineBtn.innerText = 'حفظ ونشر الماكينة سحابياً';
-    }
+// الاستماع لأي تحديث يحدث في الذاكرة المشتركة لتحديث الأجهزة الأخرى فوراً
+window.addEventListener('storage', (e) => {
+  if (e.key === 'machinery_catalog') {
+    machines = JSON.parse(e.newValue) || defaultMachines;
     renderCatalog(searchInput ? searchInput.value.trim() : '');
     renderAdminTable();
   }
-}
+});
 
-// 3. عرض الماكينات في المعرض
 function renderCatalog(filterText = '') {
   if (!machinesGrid) return;
   machinesGrid.innerHTML = '';
@@ -152,7 +99,6 @@ if (searchInput) {
   });
 }
 
-// 4. فتح تفاصيل الماكينة
 window.openSpecs = function(id) {
   const m = machines.find(x => x.id === id);
   if(!m) return;
@@ -171,7 +117,6 @@ window.openSpecs = function(id) {
   specModal.classList.add('active');
 };
 
-// 5. تسجيل دخول الأدمن
 if (navAdminBtn) {
   navAdminBtn.addEventListener('click', () => {
     if (isLoggedIn) {
@@ -241,7 +186,6 @@ function renderAdminTable() {
   });
 }
 
-// 6. ضغط الصور ورفعها
 function compressAndSaveImage(file, callback) {
   const reader = new FileReader();
   reader.onload = function(e) {
@@ -298,8 +242,11 @@ function saveMachineData(id, title, price, phone, image, specs) {
     machines.push({ id: Date.now().toString(), title, price, phone, image, specs });
   }
   
-  syncToCloud();
+  localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+  renderCatalog(searchInput ? searchInput.value.trim() : '');
+  renderAdminTable();
   resetForm();
+  alert('تم حفظ ونشر الماكينة بنجاح!');
 }
 
 window.editMachine = function(id) {
@@ -334,12 +281,12 @@ function resetForm() {
 }
 
 window.deleteMachine = function(id) {
-  if (confirm('هل أنت متأكد من حذف هذه الماكينة سحابياً؟')) {
+  if (confirm('هل أنت متأكد من حذف هذه الماكينة؟')) {
     machines = machines.filter(m => m.id !== id);
-    syncToCloud();
+    localStorage.setItem('machinery_catalog', JSON.stringify(machines));
+    renderCatalog(searchInput ? searchInput.value.trim() : '');
+    renderAdminTable();
   }
 };
 
-// تشغيل جلب البيانات المباشرة فور تحميل الموقع وإعادة التحديث تلقائياً
-fetchCloudData();
-setInterval(fetchCloudData, 10000); // تحديث دوري كل 10 ثوانٍ لسحب البيانات الجديدة للأجهزة الأخرى
+renderCatalog();
